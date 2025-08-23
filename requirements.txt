@@ -5,3 +5,4 @@ langchain
 dotenv
 spotipy
 requests
+tavily-python

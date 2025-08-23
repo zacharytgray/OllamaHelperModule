@@ -6,12 +6,72 @@ from spotipy import SpotifyOAuth
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from tavily import TavilyClient
 
 
 load_dotenv('keys.env')
+
+# Initialize Tavily client
+tavily_api_key = os.getenv("tavily_key")
+tavily_client = TavilyClient(api_key=tavily_api_key) if tavily_api_key else None
+
 scope = "user-read-playback-state,user-modify-playback-state,user-read-currently-playing"
 auth_manager = SpotifyOAuth(scope=scope, cache_path='.cache')
 sp = spotipy.Spotify(auth_manager=auth_manager)
+
+@tool
+def web_search(query: str, max_results: int = 5) -> str:
+    """
+    Search the web using Tavily for current information and real-time data.
+    
+    Parameters:
+    - query (str): The search query to look up on the web.
+    - max_results (int): Maximum number of search results to return (default: 5).
+    
+    Returns:
+    - str: Search results with titles, URLs, and content snippets.
+    """
+    if not tavily_client:
+        return "Web search not available. Tavily API key not configured."
+    
+    try:
+        response = tavily_client.search(
+            query=query,
+            max_results=max_results,
+            include_answer=True,
+            include_raw_content=False
+        )
+        
+        if not response or 'results' not in response:
+            return f"No search results found for: {query}"
+        
+        # Format the search results
+        formatted_results = []
+        
+        # Include the answer if available
+        if response.get('answer'):
+            formatted_results.append(f"Quick Answer: {response['answer']}\n")
+        
+        # Format individual search results
+        for i, result in enumerate(response['results'][:max_results], 1):
+            title = result.get('title', 'No title')
+            url = result.get('url', 'No URL')
+            content = result.get('content', 'No content available')
+            
+            # Truncate content if too long
+            if len(content) > 200:
+                content = content[:200] + "..."
+            
+            formatted_results.append(
+                f"{i}. **{title}**\n"
+                f"   URL: {url}\n"
+                f"   Content: {content}\n"
+            )
+        
+        return "\n".join(formatted_results)
+        
+    except Exception as e:
+        return f"Error performing web search: {str(e)}"
 
 @tool
 def play_song_by_search(query: str, limit: int = 5) -> str:
@@ -161,6 +221,9 @@ def send_email(subject: str, receiver_email: str, content: str):
     sender_email = os.getenv("EMAIL_SENDER")
     password = os.getenv("GOOGLE_APP_PWD")
 
+    if not sender_email or not password:
+        return "Email credentials not configured. Please check EMAIL_SENDER and GOOGLE_APP_PWD in keys.env"
+
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
     message["From"] = sender_email
@@ -169,15 +232,17 @@ def send_email(subject: str, receiver_email: str, content: str):
     part1 = MIMEText(content, "html")
     message.attach(part1)
 
+    server = None
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)  # Use appropriate server details for your email provider
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
-        print("Email sent successfully!")
+        return f"Email sent successfully to {receiver_email}!"
     except Exception as e:
-        print(f"Error sending email: {e}")
+        return f"Error sending email: {e}"
     finally:
-        server.quit()
+        if server:
+            server.quit()
 
 
 # Function to dynamically collect all tools

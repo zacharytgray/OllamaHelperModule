@@ -9,7 +9,7 @@ def checkForChatExit(userInput):
     return False
 
 async def main():
-    model_name = "granite3-dense:8b"
+    model_name = "gpt-oss:20b"
     instructions_filepath = "systemInstructions.txt"
     user = User("UserProfiles/Zachary_Gray_Profile.json")
     agent = Agent(modelName=model_name, instructionsFilepath=instructions_filepath, user=user)
@@ -34,6 +34,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print(f"{Fore.YELLOW}Exiting gracefully...{Fore.RESET}")
+        print(f"{Fore.YELLOW}Exiting gracefully...{Fore.RESET}") 
     except Exception as e:
         print(f"{Fore.RED}An error occurred: {e}{Fore.RESET}")
