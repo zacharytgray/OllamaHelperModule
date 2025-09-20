@@ -1,7 +1,6 @@
 import asyncio
 from colorama import Fore
-from userProfile import User
-from ollamaHelperMain import Agent
+from ollamaAgentModule import Agent
 
 def checkForChatExit(userInput):
     if userInput.lower() in ['exit', 'quit', 'q']:
@@ -11,8 +10,7 @@ def checkForChatExit(userInput):
 async def main():
     model_name = "gpt-oss:20b"
     instructions_filepath = "systemInstructions.txt"
-    user = User("UserProfiles/Zachary_Gray_Profile.json")
-    agent = Agent(modelName=model_name, instructionsFilepath=instructions_filepath, user=user)
+    agent = Agent(modelName=model_name, instructionsFilepath=instructions_filepath, use_tools = True)
     chatIsActive = True
     while chatIsActive:
         userInput = input(f"{Fore.LIGHTGREEN_EX}You: {Fore.RESET}")

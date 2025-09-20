@@ -2,7 +2,3 @@ colorama
 ollama
 langchain-ollama
 langchain
-dotenv
-spotipy
-requests
-tavily-python

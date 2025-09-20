@@ -4,19 +4,18 @@ from langchain_ollama import ChatOllama
 from colorama import Fore
 from ollamaTools import ALL_TOOLS  # Import dynamic tool collection
 from langchain_core.messages import ToolMessage
-from userProfile import User
 
 class Agent:
-    def __init__(self, modelName, instructionsFilepath, user=None):
+    def __init__(self, modelName, instructionsFilepath, use_tools: bool = False):
         self.modelName = modelName
         self.instructionsFilpath = instructionsFilepath
-        self.user = user
         self.memory = [self.importInstructions()]
         self.temperature = 0.5
         self.responseTimeout = 60
-        self.tools = ALL_TOOLS  # Use dynamic tool collection
+        self.use_tools = use_tools
+        self.tools = ALL_TOOLS if use_tools else []
         self.model = ChatOllama(model=self.modelName, base_url="http://localhost:11434", temperature=self.temperature)
-        if self.tools:
+        if self.use_tools and self.tools:
             self.model = self.model.bind_tools(self.tools)            
 
     def importInstructions(self):
@@ -24,8 +23,6 @@ class Agent:
         try:
             with open(self.instructionsFilpath, 'r') as f:
                 instructions += f.read()
-            if self.user:
-                instructions += f"\n{self.user.toString()}\n"
         except FileNotFoundError:
             print(f"{Fore.RED}Instructions file not found: {self.instructionsFilpath}{Fore.RESET}")
             exit(1)
@@ -58,8 +55,8 @@ class Agent:
             chain = history | self.model
             response = await chain.ainvoke({})
             
-            # Handle tool calls if present
-            if hasattr(response, 'tool_calls') and response.tool_calls:
+            # Handle tool calls if present and tools are enabled
+            if self.use_tools and hasattr(response, 'tool_calls') and response.tool_calls:
                 print(f"{Fore.YELLOW}Tool calls detected: {len(response.tool_calls)}\nResponse: {response.content}{Fore.RESET}")
                 
                 # Add the assistant's response (which contains tool calls) to memory
@@ -91,15 +88,6 @@ class Agent:
         for tool in self.tools:
             if tool.name == tool_name:
                 try:
-                    # Special handling for the update_user_profile tool
-                    if tool_name == 'update_user_profile':
-                        if self.user:
-                            self.user.addToProfile(tool_args['key'], tool_args['value'])
-                            self.user.saveProfile()
-                            return f"User profile updated: {tool_args['key']} = {tool_args['value']}"
-                        else:
-                            return "No user profile to update."
-                    
                     result = tool.invoke(tool_args)
                     print(f"{Fore.GREEN}Tool {tool_name} executed successfully: {result}{Fore.RESET}")
                     return str(result)
